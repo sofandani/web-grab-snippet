@@ -83,7 +83,7 @@ class cURLs {
 
 				$statusCode = curl_getinfo($curl, CURLINFO_HTTP_CODE); 
 
-				if( in_array($statusCode, range(200,304)) ){
+				if( in_array($statusCode, range(200,306)) ){
 					return false;
 				}
 				else{
@@ -152,7 +152,7 @@ class cURLs {
 
 				$statusCode = curl_getinfo($curl, CURLINFO_HTTP_CODE); 
 
-				if( in_array($statusCode, range(200,304)) ){
+				if( in_array($statusCode, range(200,306)) ){
 					return $result;
 				}
 				else{
@@ -167,15 +167,32 @@ class cURLs {
 	}
 
 	protected function _getFavicon(){
+		$url = $this->_url;
+		$url = preg_match('/(htt(p|ps)|ft(p|ps))/', $url) ? $url : 'http://'.$url;
 		$processDataCurl = $this->_ProcessDataCurl();
 
 		if($processDataCurl !== null){
 			$favicon = $this->_parseFavicon($processDataCurl);
-			return $favicon;
+
+			$pieces = parse_url($favicon);
+			$domain = isset($pieces['host']) ? $pieces['host'] : '';
+			
+			if(preg_match('/(?P<domain>[a-z0-9][a-z0-9\-]{1,63}\.[a-z\.]{2,6})$/i', $domain)) {
+				$favicon = preg_match('/^\/\/(.*)/', $favicon) ? 'http:'.$favicon : $favicon;
+				return $favicon;
+			}
+			else{
+				$favicon = preg_match('/^\/(.*)/', $favicon) ? $favicon : '/'.$favicon;
+				return $url.$favicon;
+			}
 		}
 		else{
 			return null;
 		}
+	}
+
+	protected function _matchDomain(){
+		$url = $this->_url;
 	}
 
 	protected function _sliceCurlData(){
@@ -198,27 +215,56 @@ class cURLs {
 		/**
 		 * _parseFavicon function
 		 * Source: https://gist.github.com/jeremiahlee/785769
+		 *
+		 * Get the 'href' attribute value in a <link rel="icon" ... />
+		 * Also works for IE style: <link rel="shortcut icon" href="http://www.example.com/myicon.ico" />
+		 * And for iOS style: <link rel="apple-touch-icon" href="somepath/image.ico">
 		 */
 
-		// Get the 'href' attribute value in a <link rel="icon" ... />
-		// Also works for IE style: <link rel="shortcut icon" href="http://www.example.com/myicon.ico" />
-		// And for iOS style: <link rel="apple-touch-icon" href="somepath/image.ico">
 		$matches = array();
 
-		// Search for <link rel="icon" type="image/png" href="http://example.com/icon.png" />
-		preg_match('/<link.*?rel=("|\').*icon("|\').*?href=("|\')(.*?)("|\')/i', $html, $matches);
-		if (count($matches) > 4) {
+		/* Search for <link rel="icon" type="image/png" href="http://example.com/icon.png" /> */
+		preg_match('/><link.*?rel=("|\').*icon("|\').*?href=("|\')(.*?)("|\')/i', $html, $matches);
+		if (count($matches) > 4)
 			return trim($matches[4]);
-		}
 
-		// Order of attributes could be swapped around: <link type="image/png" href="http://example.com/icon.png" rel="icon" />
-		preg_match('/<link.*?href=("|\')(.*?)("|\').*?rel=("|\').*icon("|\')/i', $html, $matches);
-		if (count($matches) > 2) {
+		/* Search for <link rel="icon" type="image/png" href="http://example.com/icon.png" /> */
+		preg_match('/<link.*?type=("|\')image.*("|\').*?href=("|\')(.*?)("|\')/i', $html, $matches);
+		if (count($matches) > 4)
+			return trim($matches[4]);
+
+		/* 
+		 * Order of attributes could be swapped around:
+		 * <link href="http://example.com/icon.png" type="image/......" />
+		 */
+		preg_match('/<link.*?href=("|\')(.*?)("|\').*?type=("|\')image.*("|\')/i', $html, $matches);
+		if (count($matches) > 2)
 			return trim($matches[2]);
-		}
 
-		// No match
+		/* 
+		 * Order of attributes could be swapped around:
+		 * <link type="image/......" href="http://example.com/icon.png" />
+		 */
+		preg_match('/<link.*?rel=("|\').*icon("|\').*?href=("|\')(.*?)("|\')/i', $html, $matches);
+		if (count($matches) > 4)
+			return trim($matches[4]);
+
+		/* Order of attributes could be swapped around:
+		 * <link href="http://example.com/icon.png" rel="icon" />
+		 */
+		preg_match('/<link.*?href=("|\')(.*?)("|\').*?rel=("|\').*icon("|\')/i', $html, $matches);
+		if (count($matches) > 2)
+			return trim($matches[2]);
+
+		/* Order of attributes could be swapped around:
+		 * <link rel="icon" href="http://example.com/icon.png" />
+		 */
+		preg_match('/<link.*?rel=("|\')icon("|\').*?href=("|\')(.*?)("|\')/i', $html, $match_todo);
+		if (count($match_todo) > 3)
+			return trim($match_todo[3]);
+
+		/* No match */
 		return null;
-	} 
+	}
 }
 ?>
