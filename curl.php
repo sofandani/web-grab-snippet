@@ -42,6 +42,9 @@ class cURLs {
 				case 'favicon':
 					return $this->_getFavicon();
 				break;
+				case 'loop-favicon':
+					return $this->_loopFavicon();
+				break;
 				default:
 					return $this->_ProcessDataCurl();
 				break;
@@ -166,8 +169,59 @@ class cURLs {
 		}
 	}
 
+	protected function _saveFavicon($url_icon){
+
+		$url = $this->_url;
+		$args = $this->_args;
+		$file_path = isset($args['fp']) ? $args['fp'] : 'favicon/';
+		$url_icon = $url_icon ? $url_icon : $url;
+		$fixed_file = $this->_fixedFile($url_icon);
+		$local_file = $file_path.$fixed_file;
+
+		if(!file_exists($local_file)){
+
+			$ch = curl_init($url_icon);
+			curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+			curl_setopt($ch, CURLOPT_BINARYTRANSFER, 1);
+			curl_setopt($ch, CURLOPT_USERAGENT, 'Mozilla/21.0 (compatible; MSIE 8.01; Windows NT 5.0)');
+			curl_setopt($ch, CURLOPT_TIMEOUT, 200);
+			curl_setopt($ch, CURLOPT_AUTOREFERER, false);
+			curl_setopt($ch, CURLOPT_REFERER, 'http://google.com');
+			curl_setopt($ch, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_1);
+			curl_setopt($ch, CURLOPT_HEADER, 0);
+			curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true); // Follows redirect responses
+			curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
+			curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+
+			// gets the file content, trigger error if false
+			$file = curl_exec($ch);
+			if($file === false) trigger_error(curl_error($ch));
+
+			curl_close ($ch);
+
+			@file_put_contents($local_file, $file);
+
+		}
+	}
+
+	protected function _loopFavicon(){}
+
+	protected function _googleGetFavicon(){
+		$url = $this->_url;
+	    $ch = curl_init('http://www.google.com/s2/favicons?domain='.$url);
+	    curl_setopt($ch, CURLOPT_TIMEOUT, 10);
+	    curl_setopt($ch, CURLOPT_FOLLOWLOCATION, false);
+	    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+	    $data = curl_exec($ch);
+	    curl_close($ch);
+	 
+	    return $data;
+	}
+
 	protected function _getFavicon(){
 		$url = $this->_url;
+		$args = $this->_args;
+
 		$url = preg_match('/(htt(p|ps)|ft(p|ps))/', $url) ? $url : 'http://'.$url;
 		$processDataCurl = $this->_ProcessDataCurl();
 
@@ -179,12 +233,18 @@ class cURLs {
 			
 			if(preg_match('/(?P<domain>[a-z0-9][a-z0-9\-]{1,63}\.[a-z\.]{2,6})$/i', $domain)) {
 				$favicon = preg_match('/^\/\/(.*)/', $favicon) ? 'http:'.$favicon : $favicon;
-				return $favicon;
+				$result = $favicon;
 			}
 			else{
 				$favicon = preg_match('/^\/(.*)/', $favicon) ? $favicon : '/'.$favicon;
-				return $url.$favicon;
+				$result = $url.$favicon;
 			}
+
+			if(isset($args['save']) AND $args['save']==true){
+				$this->_saveFavicon($result);
+			}
+
+			return $result;
 		}
 		else{
 			return null;
@@ -209,6 +269,17 @@ class cURLs {
 		else{
 			return null;
 		}
+	}
+
+	protected function _fixedFile($url_icon){
+		$url = $this->_url;
+		$url_icon = $url_icon ? $url_icon : $url;
+		$path_info = pathinfo($url_icon);
+		$ext = $path_info['extension'];
+		$ext = preg_replace('/(\?)(.*)/','', $ext);
+		$name_icon = preg_replace('/\./','_', $url);
+		$name_icon = $name_icon.'.'.$ext;
+		return $name_icon;
 	}
 
 	protected function _parseFavicon($html){
