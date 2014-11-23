@@ -4,6 +4,7 @@ require_once('curl.php');
 $url = 'http://about.me/ofan';
 
 $Curls = new cURLs(array('url'=>$url,'type'=>'favicon'));
+
 $cURLs_data = $Curls->access_curl();
 
 if($cURLs_data !== null){
