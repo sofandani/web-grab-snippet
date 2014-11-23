@@ -83,7 +83,7 @@ class cURLs {
 
 				$statusCode = curl_getinfo($curl, CURLINFO_HTTP_CODE); 
 
-				if( in_array($statusCode, range(200,308)) ){
+				if( in_array($statusCode, range(200,304)) ){
 					return false;
 				}
 				else{
@@ -152,7 +152,7 @@ class cURLs {
 
 				$statusCode = curl_getinfo($curl, CURLINFO_HTTP_CODE); 
 
-				if( in_array($statusCode, range(200,308)) ){
+				if( in_array($statusCode, range(200,304)) ){
 					return $result;
 				}
 				else{
